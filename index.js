@@ -1,13 +1,10 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+// index.js is used to setup and configure your bot
+
+// Import required packages
 const path = require('path');
-
-const dotenv = require('dotenv');
-// Import required bot configuration.
-const ENV_FILE = path.join(__dirname, '.env');
-dotenv.config({ path: ENV_FILE });
-
 const restify = require('restify');
 
 // Import required bot services.
@@ -15,28 +12,25 @@ const restify = require('restify');
 const { BotFrameworkAdapter } = require('botbuilder');
 
 // This bot's main dialog.
-const { EchoBot } = require('./bot');
+const { BreakBot } = require('./bot');
 
-// Create HTTP server
-const server = restify.createServer();
-server.listen(process.env.port || process.env.PORT || 3978, () => {
-    console.log(`\n${ server.name } listening to ${ server.url }`);
-    console.log('\nGet Bot Framework Emulator: https://aka.ms/botframework-emulator');
-    console.log('\nTo talk to your bot, open the emulator select "Open Bot"');
-});
+// Note: Ensure you have a .env file and include the MicrosoftAppId and MicrosoftAppPassword.
+const ENV_FILE = path.join(__dirname, '.env');
+require('dotenv').config({ path: ENV_FILE });
 
 // Create adapter.
-// See https://aka.ms/about-bot-adapter to learn more about how bots work.
+// See https://aka.ms/about-bot-adapter to learn more about adapters.
 const adapter = new BotFrameworkAdapter({
     appId: process.env.MicrosoftAppId,
     appPassword: process.env.MicrosoftAppPassword
 });
 
 // Catch-all for errors.
-const onTurnErrorHandler = async (context, error) => {
+adapter.onTurnError = async (context, error) => {
     // This check writes out errors to console log .vs. app insights.
     // NOTE: In production environment, you should consider logging this to Azure
-    //       application insights.
+    //       application insights. See https://aka.ms/bottelemetry for telemetry 
+    //       configuration instructions.
     console.error(`\n [onTurnError] unhandled error: ${ error }`);
 
     // Send a trace activity, which will be displayed in Bot Framework Emulator
@@ -52,33 +46,56 @@ const onTurnErrorHandler = async (context, error) => {
     await context.sendActivity('To continue to run this bot, please fix the bot source code.');
 };
 
-// Set the onTurnError for the singleton BotFrameworkAdapter.
-adapter.onTurnError = onTurnErrorHandler;
-
 // Create the main dialog.
-const myBot = new EchoBot();
+const conversationReferences = {};
+const bot = new BreakBot(conversationReferences);
 
-// Listen for incoming requests.
+// Create HTTP server.
+const server = restify.createServer();
+server.listen(process.env.port || process.env.PORT || 3978, function() {
+    console.log(`\n${ server.name } listening to ${ server.url }`);
+    console.log('\nGet Bot Framework Emulator: https://aka.ms/botframework-emulator');
+    console.log('\nTo talk to your bot, open the emulator select "Open Bot"');
+});
+
+// Listen for incoming activities and route them to your bot main dialog.
 server.post('/api/messages', (req, res) => {
-    adapter.processActivity(req, res, async (context) => {
-        // Route to main dialog.
-        await myBot.run(context);
+    adapter.processActivity(req, res, async (turnContext) => {
+        // route to main dialog.
+        await bot.run(turnContext);
     });
 });
 
-// Listen for Upgrade requests for Streaming.
-server.on('upgrade', (req, socket, head) => {
-    // Create an adapter scoped to this WebSocket connection to allow storing session data.
-    const streamingAdapter = new BotFrameworkAdapter({
-        appId: process.env.MicrosoftAppId,
-        appPassword: process.env.MicrosoftAppPassword
-    });
-    // Set onTurnError for the BotFrameworkAdapter created for each connection.
-    streamingAdapter.onTurnError = onTurnErrorHandler;
+// Listen for incoming notifications and send proactive messages to users.
+server.get('/api/notify', async (req, res) => {
+    for (const conversationReference of Object.values(conversationReferences)) {
+        await adapter.continueConversation(conversationReference, async turnContext => {
+            // If you encounter permission-related errors when sending this message, see
+            // https://aka.ms/BotTrustServiceUrl
+            await turnContext.sendActivity('proactive hello');
+        });
+    }
 
-    streamingAdapter.useWebSocket(req, socket, head, async (context) => {
-        // After connecting via WebSocket, run this logic for every request sent over
-        // the WebSocket connection.
-        await myBot.run(context);
-    });
+    res.setHeader('Content-Type', 'text/html');
+    res.writeHead(200);
+    res.write('<html><body><h1>Proactive messages have been sent.</h1></body></html>');
+    res.end();
 });
+
+// Listen for time changes
+setInterval(sendBreakNotification, 5000);
+
+async function sendBreakNotification() {
+    for (const conversationReference of Object.values(conversationReferences)) {
+        await adapter.continueConversation(conversationReference, async turnContext => {
+            // If you encounter permission-related errors when sending this message, see
+            // https://aka.ms/BotTrustServiceUrl
+            await turnContext.sendActivity('It is time to take a break!').catch(e => {
+                throw e
+             });
+        }).catch(e => {
+            console.log('Promise Rejection!');
+         });
+    }
+}
+
