@@ -22,12 +22,13 @@ class BreakBot extends ActivityHandler {
             const membersAdded = context.activity.membersAdded;
             for (let cnt = 0; cnt < membersAdded.length; cnt++) {
                 if (membersAdded[cnt].id !== context.activity.recipient.id) {
-                    const welcomeMessage = 'Welcome to BreakBot! I will remind you when you need to take breaks :)';
+                    const welcomeMessage = `Welcome to BreakBot! I will remind you when you need to take breaks :)
+                                            Here are some commands you can give BreakBot:`;
                     await context.sendActivity(welcomeMessage);
+                    await this.sendBotCommands(context);
+                    await next();
                 }
             }
-
-            // By calling next() you ensure that the next BotHandler is run.
             await next();
         });
 
@@ -36,16 +37,24 @@ class BreakBot extends ActivityHandler {
 
             TurnContext.removeRecipientMention(context.activity);
             const text = context.activity.text.trim().toLocaleLowerCase();
-            if (text.includes('next') && text.includes('break')) {
+            if (/^\d+$/.test(text)) {
+                await context.sendActivity('in the digits');
+                let duration = context.activity.text.trim().toLocaleLowerCase();
+                // convert to milliseconds
+                this.timekeeper.breakInterval = parseInt(duration, 10) * 60000;
+            } else if ((text.includes('set') || text.includes('change')) && (text.includes('time') || text.includes('interval'))) {
+                await context.sendActivity('How often would you like to take a break? Fill in the blank: Once every __ minutes.');
+            } else if (text.includes('next') && text.includes('break')) {
                 await this.sendTimeSinceLastDateMessage();
             } else {
-                // Echo back what the user said
-                await context.sendActivity(`You sent '${ context.activity.text }'`);
-                await next();
+                // give the list of prompts the bot understands
+                await context.sendActivity('Sorry, I couldn\'t understand you. Try:');
+                await this.sendBotCommands(context);
             }
+            await next();
         });
     }
-// this method causes an error FYI (doesn't stop the bot from running though)
+    // this method causes an error FYI (doesn't stop the bot from running though)
     async sendTimeSinceLastDateMessage() {
         const currentTime = (new Date()).getTime()
         const minutesSinceLastBreak = ((Math.abs(currentTime - timeOfLastBreak)) / 1000) / 60;
@@ -55,6 +64,12 @@ class BreakBot extends ActivityHandler {
     addConversationReference(activity) {
         const conversationReference = TurnContext.getConversationReference(activity);
         this.conversationReferences[conversationReference.conversation.id] = conversationReference;
+    }
+
+    async sendBotCommands(context) {
+        await context.sendActivity(`Ask Breakbot:
+                                    \n- When is my next break?
+                                    \n- Set time until next break`);
     }
 }
 
