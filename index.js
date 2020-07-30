@@ -11,6 +11,9 @@ const restify = require('restify');
 // See https://aka.ms/bot-services to learn more about the different parts of a bot.
 const { BotFrameworkAdapter } = require('botbuilder');
 
+// Import function to keep track of time since last break
+const { TimeKeeper } = require('./timeKeeper');
+
 // This bot's main dialog.
 const { BreakBot } = require('./bot');
 
@@ -48,7 +51,8 @@ adapter.onTurnError = async (context, error) => {
 
 // Create the main dialog.
 const conversationReferences = {};
-const bot = new BreakBot(conversationReferences);
+const timeKeeper = new TimeKeeper();
+const bot = new BreakBot(conversationReferences, timeKeeper);
 
 // Create HTTP server.
 const server = restify.createServer();
@@ -66,9 +70,9 @@ server.post('/api/messages', (req, res) => {
     });
 });
 
-// Listen for time changes
-let timeOfLastBreak = (new Date()).getTime();
-setInterval(sendBreakNotification, 5000);
+let checkForReminderInterval = 60 * 1000;
+setInterval(sendBreakNotification, timeKeeper.breakInterval);
+setInterval(sendReminderAtFiveMinutesLeft, checkForReminderInterval);
 
 async function sendBreakNotification() {
     for (const conversationReference of Object.values(conversationReferences)) {
@@ -82,7 +86,24 @@ async function sendBreakNotification() {
             console.log('Promise Rejection!');
          });
     }
-    timeOfLastBreak = (new Date()).getTime()
+    timeKeeper.timeOfLastBreak = (new Date()).getTime();
 }
-module.exports = timeOfLastBreak;
 
+// Sends a reminder that the user has 5 minutes until their break starts.
+async function sendReminderAtFiveMinutesLeft() {
+    const fiveMinutes = 5 * 60 * 1000;
+    const sixMinutes = 6 * 60 * 1000;
+    if (timeKeeper.getTimeTillNextBreak() >= fiveMinutes && timeKeeper.getTimeTillNextBreak() <= sixMinutes) {
+        for (const conversationReference of Object.values(conversationReferences)) {
+            await adapter.continueConversation(conversationReference, async turnContext => {
+                // If you encounter permission-related errors when sending this message, see
+                // https://aka.ms/BotTrustServiceUrl
+                await turnContext.sendActivity('Five minutes till your next break! Hope you are ready ;)').catch(e => {
+                    throw e
+                 });
+            }).catch(e => {
+                console.log('Promise Rejection!');
+             });
+        }
+    }
+}

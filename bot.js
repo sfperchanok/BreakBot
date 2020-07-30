@@ -1,13 +1,15 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-const { ActivityHandler, TurnContext } = require('botbuilder');
-let timeOfLastBreak = require('./index');
-const { time } = require('console');
+const { ActivityHandler, TurnContext, MessageFactory, ActivityTypes, CardFactory, ActionTypes } = require('botbuilder');
+const { getTimeTillNextBreak } = require('./timeKeeper');
 
 class BreakBot extends ActivityHandler {
-    constructor(conversationReferences) {
+    constructor(conversationReferences, timeKeeper) {
         super();
+
+        // Keeps track of time between breaks
+        this.timeKeeper = timeKeeper
 
         // Dependency injected dictionary for storing ConversationReference objects used in NotifyController to proactively message users
         this.conversationReferences = conversationReferences;
@@ -38,27 +40,91 @@ class BreakBot extends ActivityHandler {
             TurnContext.removeRecipientMention(context.activity);
             const text = context.activity.text.trim().toLocaleLowerCase();
             if (/^\d+$/.test(text)) {
-                await context.sendActivity('in the digits');
                 let duration = context.activity.text.trim().toLocaleLowerCase();
-                // convert to milliseconds
-                this.timekeeper.breakInterval = parseInt(duration, 10) * 60000;
+                this.timeKeeper.breakInterval = parseInt(duration, 10) * 60 * 1000;
+                // NEED TO RESET INTERVAL HERE 
             } else if ((text.includes('set') || text.includes('change')) && (text.includes('time') || text.includes('interval'))) {
                 await context.sendActivity('How often would you like to take a break? Fill in the blank: Once every __ minutes.');
             } else if (text.includes('next') && text.includes('break')) {
                 await this.sendTimeSinceLastDateMessage();
-            } else {
-                // give the list of prompts the bot understands
-                await context.sendActivity('Sorry, I couldn\'t understand you. Try:');
-                await this.sendBotCommands(context);
+            } else if (text.includes('next') && text.includes('break')) {
+                await this.sendTimeSinceLastDateMessage(context);
+            } else if (text.includes('who')) {
+                await this.sendInfo(context);
+            } else if (text.includes('why')) {
+                await this.sendWhyYouShouldTakeBreaks(context);
             }
-            await next();
+            else {
+                // Send a card detailing what the bot can do
+                await this.cardActivityAsync(context, false);
+            }
         });
     }
-    // this method causes an error FYI (doesn't stop the bot from running though)
-    async sendTimeSinceLastDateMessage() {
-        const currentTime = (new Date()).getTime()
-        const minutesSinceLastBreak = ((Math.abs(currentTime - timeOfLastBreak)) / 1000) / 60;
-        await context.sendActivity('It has been ${minutesSinceLastBreak} minutes since your last break.');
+
+    async sendTimeSinceLastDateMessage(context) {
+        const minutes = Math.floor((this.timeKeeper.getTimeTillNextBreak() / 1000) / 60);
+        await context.sendActivity(`You have ${ minutes } minutes until your next break.`);
+    }
+
+    async sendInfo(context) {
+        await context.sendActivity(`I am BreakBot! I will send you reminders every hour to take a break.`);
+    }
+
+    async sendWhyYouShouldTakeBreaks(context) {
+        const reply = { type: ActivityTypes.Message };
+        reply.text = `Good question, breaks are important for you health and happiness. Here is a cool infographic from lifehack I found!`
+        reply.attachments = [this.getInternetAttachment()];
+        await context.sendActivity(reply);
+    }
+
+    /**
+     * Returns an attachment to be sent to the user from a HTTPS URL.
+     */
+    getInternetAttachment() {
+        // NOTE: The contentUrl must be HTTPS.
+        return {
+            name: '890x.jpg',
+            contentType: 'image/jpg',
+            contentUrl: 'https://cdn.lifehack.org/wp-content/uploads/2013/06/890x.jpg'
+        };
+    }
+
+    async cardActivityAsync(context, isUpdate) {
+        const cardActions = [
+            {
+                type: ActionTypes.MessageBack,
+                title: 'Next Break?',
+                value: null,
+                text: 'NextBreak'
+            },
+            {
+                type: ActionTypes.MessageBack,
+                title: 'Who am I?',
+                value: null,
+                text: 'whoami'
+            },
+            {
+                type: ActionTypes.MessageBack,
+                title: 'Why do I need to take breaks?',
+                value: null,
+                text: 'whytakebreaks'
+            },
+        ];
+
+        await this.sendWelcomeCard(context, cardActions);
+    }
+
+    async sendWelcomeCard(context, cardActions) {
+        const initialValue = {
+            count: 0
+        };
+        const card = CardFactory.heroCard(
+            'What Can I Do For You?',
+            '',
+            null,
+            cardActions
+        );
+        await context.sendActivity(MessageFactory.attachment(card));
     }
 
     addConversationReference(activity) {
