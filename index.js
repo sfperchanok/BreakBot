@@ -89,6 +89,7 @@ async function sendBreakNotification() {
     timeKeeper.timeOfLastBreak = (new Date()).getTime();
 }
 
+// Sends a reminder that the user has 5 minutes until their break starts.
 async function sendReminderAtFiveMinutesLeft() {
     const fiveMinutes = 5 * 60 * 1000;
     const sixMinutes = 6 * 60 * 1000;
