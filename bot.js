@@ -2,11 +2,14 @@
 // Licensed under the MIT License.
 
 const { ActivityHandler, TurnContext } = require('botbuilder');
-let timeOfLastBreak = require('./index');
+const { getTimeTillNextBreak } = require('./timeKeeper');
 
 class BreakBot extends ActivityHandler {
-    constructor(conversationReferences) {
+    constructor(conversationReferences, timeKeeper) {
         super();
+
+        // Keeps track of time between breaks
+        this.timeKeeper = timeKeeper
 
         // Dependency injected dictionary for storing ConversationReference objects used in NotifyController to proactively message users
         this.conversationReferences = conversationReferences;
@@ -36,7 +39,7 @@ class BreakBot extends ActivityHandler {
             TurnContext.removeRecipientMention(context.activity);
             const text = context.activity.text.trim().toLocaleLowerCase();
             if (text.includes('next') && text.includes('break')) {
-                await this.sendTimeSinceLastDateMessage();
+                await this.sendTimeSinceLastDateMessage(context);
             } else {
                 // Echo back what the user said
                 await context.sendActivity(`You sent '${ context.activity.text }'`);
@@ -44,11 +47,10 @@ class BreakBot extends ActivityHandler {
             }
         });
     }
-// this method causes an error FYI (doesn't stop the bot from running though)
-    async sendTimeSinceLastDateMessage() {
-        const currentTime = (new Date()).getTime()
-        const minutesSinceLastBreak = ((Math.abs(currentTime - timeOfLastBreak)) / 1000) / 60;
-        await context.sendActivity('It has been ${minutesSinceLastBreak} minutes since your last break.');
+
+    async sendTimeSinceLastDateMessage(context) {
+        const minutes = Math.round((this.timeKeeper.getTimeTillNextBreak() / 1000) / 60);
+        await context.sendActivity(`You have '${ minutes }' minutes until your next break.`);
     }
 
     addConversationReference(activity) {

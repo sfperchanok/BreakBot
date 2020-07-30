@@ -11,6 +11,9 @@ const restify = require('restify');
 // See https://aka.ms/bot-services to learn more about the different parts of a bot.
 const { BotFrameworkAdapter } = require('botbuilder');
 
+// Import function to keep track of time since last break
+const { TimeKeeper } = require('./timeKeeper');
+
 // This bot's main dialog.
 const { BreakBot } = require('./bot');
 
@@ -48,7 +51,8 @@ adapter.onTurnError = async (context, error) => {
 
 // Create the main dialog.
 const conversationReferences = {};
-const bot = new BreakBot(conversationReferences);
+const timeKeeper = new TimeKeeper();
+const bot = new BreakBot(conversationReferences, timeKeeper);
 
 // Create HTTP server.
 const server = restify.createServer();
@@ -66,9 +70,7 @@ server.post('/api/messages', (req, res) => {
     });
 });
 
-// Listen for time changes
-let timeOfLastBreak = (new Date()).getTime();
-setInterval(sendBreakNotification, 5000);
+setInterval(sendBreakNotification, timeKeeper.breakInterval);
 
 async function sendBreakNotification() {
     for (const conversationReference of Object.values(conversationReferences)) {
@@ -82,7 +84,6 @@ async function sendBreakNotification() {
             console.log('Promise Rejection!');
          });
     }
-    timeOfLastBreak = (new Date()).getTime()
+    timeKeeper.timeOfLastBreak = (new Date()).getTime();
 }
-module.exports = timeOfLastBreak;
 
