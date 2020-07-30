@@ -7,6 +7,7 @@ class TimeKeeper {
         this.breakInterval = breakIntervalInMinutes * 60 * 1000;
         this.timeOfLastBreak = (new Date()).getTime();
         this.callbackFunction = callbackFunction
+        this.timerID = null;
     }
     
     getTimeTillNextBreak() {
@@ -16,11 +17,12 @@ class TimeKeeper {
     }
 
     startBreakTimer() {
-        setInterval(this.callbackFunction, this.breakInterval);
+        this.timerID = setInterval(this.callbackFunction, this.breakInterval);
+        this.timeOfLastBreak = (new Date()).getTime();
     }
 
     clearBreakTimer() {
-        clearInterval();
+        clearInterval(this.timerID);
     }
 }
 

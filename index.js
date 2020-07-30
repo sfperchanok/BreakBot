@@ -86,11 +86,11 @@ async function sendBreakNotification() {
             console.log('Promise Rejection!');
          });
     }
-    timeKeeper.timeOfLastBreak = (new Date()).getTime();
 }
 
 // Sends a reminder that the user has 5 minutes until their break starts.
 async function sendReminderAtFiveMinutesLeft() {
+    console.log(timeKeeper.timeOfLastBreak);
     const fiveMinutes = 5 * 60 * 1000;
     const sixMinutes = 6 * 60 * 1000;
     if (timeKeeper.getTimeTillNextBreak() >= fiveMinutes && timeKeeper.getTimeTillNextBreak() <= sixMinutes) {
