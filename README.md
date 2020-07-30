@@ -4,13 +4,15 @@ A Microsoft Teams chatbot to remind users to take breaks
 
 This bot has been created using [Bot Framework](https://dev.botframework.com), it shows how to create a simple bot that accepts input from the user and echoes it back.
 
-# Current Status
-BreakBot will send the user a reminder every hour to take a break
+# Current Features
+- Sends the user a reminder to take a break every hour (default)
+- Allow the user to customize how often they want to be reminded
+- Remind the user about the importance of taking breaks for physical and mental wellbeing
 
 # Planned Future Work
-- Allow the user to customize how often they want to be reminded
 - Suggest good break activities like stretching, small workouts, etc.
-- Remind the user about the importance of taking breaks for physical and mental wellbeing
+- Ability to turn reminders on/off
+- BreakBot is only active during work hours
 
 ## Prerequisites
 
