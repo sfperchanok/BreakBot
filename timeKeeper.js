@@ -12,7 +12,7 @@ class TimeKeeper {
     
     getTimeTillNextBreak() {
         const currentTime = (new Date()).getTime();
-        const timeDiff = Math.abs(this.breakInterval - (this.timeOfLastBreak - currentTime))
+        const timeDiff = this.breakInterval - Math.abs((this.timeOfLastBreak - currentTime))
         return timeDiff;
     }
 
