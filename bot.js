@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-const { ActivityHandler, TurnContext, MessageFactory, CardFactory, ActionTypes, TestAdapter} = require('botbuilder');
+const { ActivityHandler, TurnContext, MessageFactory, ActivityTypes, CardFactory, ActionTypes } = require('botbuilder');
 const { getTimeTillNextBreak } = require('./timeKeeper');
 
 class BreakBot extends ActivityHandler {
@@ -42,7 +42,10 @@ class BreakBot extends ActivityHandler {
                 await this.sendTimeSinceLastDateMessage(context);
             } else if (text.includes('who')) {
                 await this.sendInfo(context);
-            } else {
+            } else if (text.includes('why')) {
+                await this.sendWhyYouShouldTakeBreaks(context);
+            }
+            else {
                 // Send a card detailing what the bot can do
                 await this.cardActivityAsync(context, false);
             }
@@ -51,11 +54,30 @@ class BreakBot extends ActivityHandler {
 
     async sendTimeSinceLastDateMessage(context) {
         const minutes = Math.floor((this.timeKeeper.getTimeTillNextBreak() / 1000) / 60);
-        await context.sendActivity(`You have '${ minutes }' minutes until your next break.`);
+        await context.sendActivity(`You have ${ minutes } minutes until your next break.`);
     }
 
     async sendInfo(context) {
         await context.sendActivity(`I am BreakBot! I will send you reminders every hour to take a break.`);
+    }
+
+    async sendWhyYouShouldTakeBreaks(context) {
+        const reply = { type: ActivityTypes.Message };
+        reply.text = `Good question, breaks are important for you health and happiness. Here is a cool infographic from lifehack I found!`
+        reply.attachments = [this.getInternetAttachment()];
+        await context.sendActivity(reply);
+    }
+
+    /**
+     * Returns an attachment to be sent to the user from a HTTPS URL.
+     */
+    getInternetAttachment() {
+        // NOTE: The contentUrl must be HTTPS.
+        return {
+            name: '890x.jpg',
+            contentType: 'image/jpg',
+            contentUrl: 'https://cdn.lifehack.org/wp-content/uploads/2013/06/890x.jpg'
+        };
     }
 
     async cardActivityAsync(context, isUpdate) {
@@ -71,6 +93,12 @@ class BreakBot extends ActivityHandler {
                 title: 'Who am I?',
                 value: null,
                 text: 'whoami'
+            },
+            {
+                type: ActionTypes.MessageBack,
+                title: 'Why do I need to take breaks?',
+                value: null,
+                text: 'whytakebreaks'
             },
         ];
 
