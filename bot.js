@@ -3,7 +3,6 @@
 
 const { ActivityHandler, TurnContext } = require('botbuilder');
 let timeOfLastBreak = require('./index');
-const { time } = require('console');
 
 class BreakBot extends ActivityHandler {
     constructor(conversationReferences) {
