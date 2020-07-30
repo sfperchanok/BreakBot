@@ -3,7 +3,8 @@
 
 class TimeKeeper {
     constructor() {
-        this.breakInterval = 5000;
+        const breakIntervalInMinutes = 7;
+        this.breakInterval = breakIntervalInMinutes * 60 * 1000;
         this.timeOfLastBreak = (new Date()).getTime();
     }
     

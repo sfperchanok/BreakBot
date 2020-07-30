@@ -49,7 +49,7 @@ class BreakBot extends ActivityHandler {
     }
 
     async sendTimeSinceLastDateMessage(context) {
-        const minutes = Math.round((this.timeKeeper.getTimeTillNextBreak() / 1000) / 60);
+        const minutes = Math.floor((this.timeKeeper.getTimeTillNextBreak() / 1000) / 60);
         await context.sendActivity(`You have '${ minutes }' minutes until your next break.`);
     }
 

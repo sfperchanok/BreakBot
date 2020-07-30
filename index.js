@@ -70,7 +70,9 @@ server.post('/api/messages', (req, res) => {
     });
 });
 
+let checkForReminderInterval = 60 * 1000;
 setInterval(sendBreakNotification, timeKeeper.breakInterval);
+setInterval(sendReminderAtFiveMinutesLeft, checkForReminderInterval);
 
 async function sendBreakNotification() {
     for (const conversationReference of Object.values(conversationReferences)) {
@@ -87,3 +89,20 @@ async function sendBreakNotification() {
     timeKeeper.timeOfLastBreak = (new Date()).getTime();
 }
 
+async function sendReminderAtFiveMinutesLeft() {
+    const fiveMinutes = 5 * 60 * 1000;
+    const sixMinutes = 6 * 60 * 1000;
+    if (timeKeeper.getTimeTillNextBreak() >= fiveMinutes && timeKeeper.getTimeTillNextBreak() <= sixMinutes) {
+        for (const conversationReference of Object.values(conversationReferences)) {
+            await adapter.continueConversation(conversationReference, async turnContext => {
+                // If you encounter permission-related errors when sending this message, see
+                // https://aka.ms/BotTrustServiceUrl
+                await turnContext.sendActivity('Five minutes till your next break! Hope you are ready ;)').catch(e => {
+                    throw e
+                 });
+            }).catch(e => {
+                console.log('Promise Rejection!');
+             });
+        }
+    }
+}
