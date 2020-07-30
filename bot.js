@@ -66,7 +66,7 @@ class BreakBot extends ActivityHandler {
     }
 
     async sendInfo(context) {
-        await context.sendActivity(`I am BreakBot! I will send you reminders every hour to take a break.`);
+        await context.sendActivity(`I am BreakBot! I will send you reminders every hour (or however long you want) to take a break.`);
     }
 
     async sendWhyYouShouldTakeBreaks(context) {
