@@ -27,7 +27,7 @@ class BreakBot extends ActivityHandler {
                     const welcomeMessage = `Welcome to BreakBot! I will remind you when you need to take breaks :)
                                             Here are some commands you can give BreakBot:`;
                     await context.sendActivity(welcomeMessage);
-                    await this.sendBotCommands(context);
+                    await this.cardActivityAsync(context, false);
                     await next();
                 }
             }
@@ -42,13 +42,12 @@ class BreakBot extends ActivityHandler {
             if (/^\d+$/.test(text)) {
                 let duration = context.activity.text.trim().toLocaleLowerCase();
                 this.timeKeeper.breakInterval = parseInt(duration, 10) * 60 * 1000;
-                // NEED TO RESET INTERVAL HERE 
+                this.timeKeeper.clearBreakTimer();
+                this.timeKeeper.startBreakTimer();  
             } else if ((text.includes('set') || text.includes('change')) && (text.includes('time') || text.includes('interval'))) {
                 await context.sendActivity('How often would you like to take a break? Fill in the blank: Once every __ minutes.');
             } else if (text.includes('next') && text.includes('break')) {
-                await this.sendTimeSinceLastDateMessage();
-            } else if (text.includes('next') && text.includes('break')) {
-                await this.sendTimeSinceLastDateMessage(context);
+                await this.sendTimeSinceLastBreakMessage(context);
             } else if (text.includes('who')) {
                 await this.sendInfo(context);
             } else if (text.includes('why')) {
@@ -61,7 +60,7 @@ class BreakBot extends ActivityHandler {
         });
     }
 
-    async sendTimeSinceLastDateMessage(context) {
+    async sendTimeSinceLastBreakMessage(context) {
         const minutes = Math.floor((this.timeKeeper.getTimeTillNextBreak() / 1000) / 60);
         await context.sendActivity(`You have ${ minutes } minutes until your next break.`);
     }
@@ -99,6 +98,12 @@ class BreakBot extends ActivityHandler {
             },
             {
                 type: ActionTypes.MessageBack,
+                title: 'Set time until next break',
+                value: null,
+                text: 'settime'
+            },
+            {
+                type: ActionTypes.MessageBack,
                 title: 'Who am I?',
                 value: null,
                 text: 'whoami'
@@ -130,12 +135,6 @@ class BreakBot extends ActivityHandler {
     addConversationReference(activity) {
         const conversationReference = TurnContext.getConversationReference(activity);
         this.conversationReferences[conversationReference.conversation.id] = conversationReference;
-    }
-
-    async sendBotCommands(context) {
-        await context.sendActivity(`Ask Breakbot:
-                                    \n- When is my next break?
-                                    \n- Set time until next break`);
     }
 }
 

@@ -51,7 +51,7 @@ adapter.onTurnError = async (context, error) => {
 
 // Create the main dialog.
 const conversationReferences = {};
-const timeKeeper = new TimeKeeper();
+const timeKeeper = new TimeKeeper(sendBreakNotification);
 const bot = new BreakBot(conversationReferences, timeKeeper);
 
 // Create HTTP server.
@@ -71,7 +71,7 @@ server.post('/api/messages', (req, res) => {
 });
 
 let checkForReminderInterval = 60 * 1000;
-setInterval(sendBreakNotification, timeKeeper.breakInterval);
+timeKeeper.startBreakTimer();
 setInterval(sendReminderAtFiveMinutesLeft, checkForReminderInterval);
 
 async function sendBreakNotification() {
