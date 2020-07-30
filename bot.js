@@ -2,6 +2,8 @@
 // Licensed under the MIT License.
 
 const { ActivityHandler, TurnContext } = require('botbuilder');
+let timeOfLastBreak = require('./index');
+const { time } = require('console');
 
 class BreakBot extends ActivityHandler {
     constructor(conversationReferences) {
@@ -20,7 +22,7 @@ class BreakBot extends ActivityHandler {
             const membersAdded = context.activity.membersAdded;
             for (let cnt = 0; cnt < membersAdded.length; cnt++) {
                 if (membersAdded[cnt].id !== context.activity.recipient.id) {
-                    const welcomeMessage = 'Welcome to the Proactive Bot sample.  Navigate to http://localhost:3978/api/notify to proactively message everyone who has previously messaged this bot.';
+                    const welcomeMessage = 'Welcome to BreakBot! I will remind you when you need to take breaks :)';
                     await context.sendActivity(welcomeMessage);
                 }
             }
@@ -32,10 +34,22 @@ class BreakBot extends ActivityHandler {
         this.onMessage(async (context, next) => {
             this.addConversationReference(context.activity);
 
-            // Echo back what the user said
-            await context.sendActivity(`You sent '${ context.activity.text }'`);
-            await next();
+            TurnContext.removeRecipientMention(context.activity);
+            const text = context.activity.text.trim().toLocaleLowerCase();
+            if (text.includes('next') && text.includes('break')) {
+                await this.sendTimeSinceLastDateMessage();
+            } else {
+                // Echo back what the user said
+                await context.sendActivity(`You sent '${ context.activity.text }'`);
+                await next();
+            }
         });
+    }
+// this method causes an error FYI (doesn't stop the bot from running though)
+    async sendTimeSinceLastDateMessage() {
+        const currentTime = (new Date()).getTime()
+        const minutesSinceLastBreak = ((Math.abs(currentTime - timeOfLastBreak)) / 1000) / 60;
+        await context.sendActivity('It has been ${minutesSinceLastBreak} minutes since your last break.');
     }
 
     addConversationReference(activity) {
