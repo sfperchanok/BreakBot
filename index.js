@@ -17,10 +17,6 @@ const { TimeKeeper } = require('./timeKeeper');
 // This bot's main dialog.
 const { BreakBot } = require('./bot');
 
-// Note: Ensure you have a .env file and include the MicrosoftAppId and MicrosoftAppPassword.
-const ENV_FILE = path.join(__dirname, '.env');
-require('dotenv').config({ path: ENV_FILE });
-
 // Create adapter.
 // See https://aka.ms/about-bot-adapter to learn more about adapters.
 const adapter = new BotFrameworkAdapter({
@@ -86,6 +82,7 @@ async function sendBreakNotification() {
             console.log('Promise Rejection!');
          });
     }
+    timeKeeper.timeOfLastBreak = (new Date()).getTime();
 }
 
 // Sends a reminder that the user has 5 minutes until their break starts.
